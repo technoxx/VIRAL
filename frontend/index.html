@@ -1,0 +1,79 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Infection Simulator</title>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+<!-- Lobby -->
+<div id="lobby-buttons">
+    <input type="text" id="username-input" placeholder="Enter Username">
+    <button onclick="joinRandomRoom()">Join Random Room</button>
+    <button onclick="createRoom()">Create Room</button>
+    <input type="text" id="room-code-input" placeholder="Enter Room Code">
+    <button onclick="joinRoom()">Join Room</button>
+    <div id="lobby-error" class="error-message" style="display:none; color: #f74f6a;"></div>
+</div>
+
+<!-- ── Waiting ── -->
+<div id="waiting-screen" style="display: none;">
+    <div class="waiting-dot"></div>
+    <h2 id="waiting-message"></h2>
+    <h1 id="countdown-timer"></h1>
+    <button id="start-game-btn" onclick="startGame()" style="display: none; margin-top: 20px; padding: 10px 20px; font-size: 16px;">Start Game</button>
+    <div id="waiting-error" class="error-message" style="display:none; color: #f74f6a;"></div>
+</div>
+
+<!-- ── Game ── -->
+<div id="game-screen" style="display:none;" class="game-container">
+
+    <header>
+        <div class="timer-room">
+            <h2 id="timer">00</h2>
+            <h1>Round: <span id="round"></span></h1>
+        </div>
+        <div class="header-tag">Infection Simulator</div>
+    </header>
+
+    <div class="content">
+
+        <!-- LEFT: Players -->
+        <div id="players-panel">
+            <div class="panel-header">
+                Players
+                <span class="player-count" id="player-count">0</span>
+            </div>
+            <div id="player-list">
+                <!-- Populated via window.updatePlayers([]) -->
+            </div>
+        </div>
+
+        <!-- CENTER: Grid -->
+        <div id="grid-wrapper">
+            <div id="grid"></div>
+            <div id="round-banner" style="position:absolute; top:10px; width:100%; text-align:center; font-size:32px; font-weight:bold; color:white; display:none; text-shadow: 2px 2px 4px black;"> </div>
+        </div>
+
+        <!-- RIGHT: Chat -->
+        <div id="chat-container">
+            <div class="chat-header">Live Chat</div>
+            <div id="chat-log"></div>
+            <div id="chat-input">
+                <input type="text" placeholder="Message..." id="input-field">
+                <button onclick="send_mess()">Send</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ── Result ── -->
+<div id="result-screen" style="display:none;">
+    <h2>Game Over</h2>
+    <pre id="result-data"></pre>
+</div>
+
+<script src="websocket.js"></script>
+</body>
+</html>
