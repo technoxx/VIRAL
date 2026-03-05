@@ -1,8 +1,9 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from .room_manager import room_manager
 from .player import Player
-import json
-import logging
+import json, logging
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,6 +13,12 @@ logging.basicConfig(
 logger = logging.getLogger("game_server")
 
 app = FastAPI()
+
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
+@app.get("/")
+async def root():
+    return FileResponse("frontend/index.html")
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
