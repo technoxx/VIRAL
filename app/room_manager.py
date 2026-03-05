@@ -1,6 +1,9 @@
 import random, string
 from .room import Room
 from .player import Player
+import logging
+
+logger = logging.getLogger("game_server.room_manager")
 
 def generate_room_code():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -12,13 +15,13 @@ class RoomManager:
     def get_available_room(self):
         for room in self.rooms.values():
             if room.code is None and room.is_room_joinable():
-                print(f"Room {room.id} available!")
+                logger.info(f"Room {room.id} available!")
                 return room
         return None
 
     def create_room(self):
         room = Room()
-        print(f"Room {room.id} created!")
+        logger.info(f"Room {room.id} created!")
         self.rooms[room.id] = room
         return room
     
@@ -37,6 +40,6 @@ class RoomManager:
     def delete_room(self, room_id:str):
         if room_id in self.rooms:
             del self.rooms[room_id]
-            print(f"Room {room_id} deleted!")
+            logger.info(f"Room {room_id} deleted!")
 
 room_manager = RoomManager()

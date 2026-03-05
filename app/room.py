@@ -2,7 +2,6 @@ import time
 import uuid, random, asyncio
 from .player import Player
 from .constants import *
-from app import player
 
 class Room:
     def __init__(self, code:str = None, creator: Player = None):
@@ -73,6 +72,9 @@ class Room:
         if player_id in self.players:
             self.players[player_id].room_id = None
             del self.players[player_id]
+
+        if self.status == "in_progress" and len(self.players) < MIN_PLAYERS:
+            asyncio.create_task(self.end_game())
 
     def get_player_at_position(self, x, y):
         for player in self.players.values():
@@ -218,7 +220,7 @@ class Room:
             p.infected = False
             p.shield_active = False
             p.shield_end_time = None
-            while True:
+            for _ in range(50):
                 x = random.randint(0, GRID_SIZE-1)
                 y = random.randint(0, GRID_SIZE-1)
 
@@ -298,8 +300,7 @@ class Room:
                     "type": "timer",
                     "remaining_time":remaining_time,
                     })
-                if remaining_time <= 0:
-                    break
+                
                 await asyncio.sleep(1)
 
             if self.status == "in_progress":
@@ -457,6 +458,9 @@ class Room:
             self.status = "waiting"  # prepare for next round
             await self.start_game()
         else:
+
+            if not self.players:
+                return
 
             await asyncio.sleep(2)  # 2-second wait before showing results
             winner = max(self.players.values(), key=lambda p: p.score)

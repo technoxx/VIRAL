@@ -6,6 +6,18 @@ const playerData = {};   // stores { health, score, infected, name, shield_activ
 const collectibles = {}; // stores collectible positions: {(x,y): 'shield'|'freeze'}
 let freezeActiveUntil = 0; // timestamp until which infected are frozen
 
+// ── Screen visibility system  ──
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const screen = document.getElementById(screenId);
+    if (screen) screen.classList.add('active');
+}
+
+function getActiveScreen() {
+    const active = document.querySelector('.screen.active');
+    return active?.id || null;
+}
+
 
 // ── Build grid ──
 function buildGrid() {
@@ -151,11 +163,12 @@ function updatePlayersOnGrid(playersOrSingle) {
 // ── Handle errors ──
 function showError(msg) {
     // Detect which screen is visible
+    const activeScreen = getActiveScreen();
     let errorDiv = null;
 
-    if (document.getElementById("lobby-buttons")?.style.display !== "none") {
+    if (activeScreen === 'lobby-screen') {
         errorDiv = document.getElementById("lobby-error");
-    } else if (document.getElementById("waiting-screen")?.style.display !== "none") {
+    } else if (activeScreen === 'waiting-screen') {
         errorDiv = document.getElementById("waiting-error");
     } else {
         // No known screen visible; exit
@@ -261,8 +274,7 @@ window.onload = function() {
 
         if (data.type === "room_created"){
             creatorId = data.creator_id;
-            document.getElementById("lobby-buttons").style.display = "none";
-            document.getElementById("waiting-screen").style.display = "flex";
+            showScreen("waiting-screen");
             
             const info = document.getElementById("waiting-message");
             info.innerHTML = ""; // clear old messages
@@ -275,15 +287,21 @@ window.onload = function() {
         }
 
         else if (data.type === "room_joined") {
-            document.getElementById("lobby-buttons").style.display = "none";
-            document.getElementById("waiting-screen").style.display = "flex";
-            
+            showScreen("waiting-screen");
+
             const info = document.getElementById("waiting-message");
-            info.innerHTML = ""; // clear old messages
+            info.innerHTML = "";
+
             const msg = document.createElement("div");
-            msg.innerHTML = data.code ? `Waiting for creator of room ${data.code} to start the game.` : "Assigned a room! <br>Waiting for others to join...";
+            msg.innerHTML = data.code
+                ? `Waiting for creator of room ${data.code} to start the game.`
+                : "Assigned a room! <br>Waiting for others to join...";
 
             info.appendChild(msg);
+
+            //  Hide start button for non-creators
+            const startBtn = document.getElementById("start-game-btn");
+            if (startBtn) startBtn.style.display = "none";
         }
 
         else if (data.type === 'countdown_timer') {
@@ -316,10 +334,7 @@ window.onload = function() {
 
         // ── Game start ──
         else if (data.type === 'game_start') {
-            document.getElementById("lobby-buttons").style.display = "none";
-            document.getElementById("waiting-screen").style.display = "none";
-            document.getElementById("result-screen").style.display  = "none";
-            document.getElementById("game-screen").style.display    = "flex";
+            showScreen("game-screen");
             document.getElementById("round").innerText = data.round;
             // Clear all collectibles from grid
             Object.keys(collectibles).forEach(key => {
@@ -337,7 +352,7 @@ window.onload = function() {
         // ── Game end ──
         else if (data.type === 'game_end') {
             console.log("GAME END DATA:", data);
-            document.getElementById("game-screen").style.display   = "none";
+            showScreen("result-screen");
             const results = data.result;
             const winner  = data.winner;
 
@@ -349,7 +364,6 @@ window.onload = function() {
                 resultText += `${p.username} - Score: ${p.score}\n`;
             });
             document.getElementById("result-data").innerText = resultText;
-            document.getElementById("result-screen").style.display = "flex";
         }
 
         // ── Timer ──

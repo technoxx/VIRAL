@@ -1,32 +1,92 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Infection Simulator</title>
+    <title>VIRAL</title>
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
 
 <!-- Lobby -->
-<div id="lobby-buttons">
-    <input type="text" id="username-input" placeholder="Enter Username">
-    <button onclick="joinRandomRoom()">Join Random Room</button>
-    <button onclick="createRoom()">Create Room</button>
-    <input type="text" id="room-code-input" placeholder="Enter Room Code">
-    <button onclick="joinRoom()">Join Room</button>
-    <div id="lobby-error" class="error-message" style="display:none; color: #f74f6a;"></div>
-</div>
+<section id="lobby-screen" class="screen active">
+    <div class="lobby-container">
+        <!-- LEFT: Rules & Info -->
+        <div class="lobby-rules-panel">
+            <div class="rules-header">
+                <h1>VIRAL</h1>
+                <p class="tagline">Race, Spread, Survive</p>
+                <p class="creator">- Created by Somiya Agarwal <span class="smiley">xD</span></p>
+            </div>
+            <div class="rules-content">
+                <h2>How to Play ⚡</h2>
+                <div class="rule-item">
+                    <h3>🎮 Objective</h3>
+                    <p>Navigate a 15×15 grid and dodge infection while stacking up points.</p>
+                </div>
+                <div class="rule-item">
+                    <h3>🚶 Movement</h3>
+                    <p>Use arrow keys to move around the grid. Chat around, vibe with other players.</p>
+                </div>
+                <div class="rule-item">
+                    <h3>🦠 Infection</h3>
+                    <p>Get close to red players? You’re infected (up, down , left, right, diagonals)! Once infected, spread the chaos. Freeze enemies with power-ups.</p>
+                </div>
+                <div class="rule-item">
+                    <h3>⚔️ Power-ups</h3>
+                    <p><span class="highlight-green">✦ Shield</span> protects you.  <span class="highlight-blue">❄ Freeze</span> stuns infected.  <span class="highlight-gold">★ Star</span> boosts score.  <span class="highlight-red">⚠︎ Red Wall</span> makes you infected.</p>
+                </div>
+                <div class="rule-item">
+                    <h3>🏆 Scoring</h3>
+                    <p>Stay healthy, collect power-ups, flex your high score. Top scorer wins!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Join Form -->
+        <div class="lobby-form-panel">
+            <div id="lobby-buttons" class="join-form">
+                <div class="form-section">
+                    <label for="username-input">Your Username</label>
+                    <input class="input" type="text" id="username-input" placeholder="Enter your name">
+                </div>
+
+                <button class="btn btn-primary" onclick="joinRandomRoom()">
+                    <span class="btn-icon">🎲</span>
+                    Join Random Room
+                </button>
+
+                <button class="btn btn-secondary" onclick="createRoom()">
+                    <span class="btn-icon">➕</span>
+                    Create Room
+                </button>
+
+                <div class="form-divider">or</div>
+
+                <div class="form-section">
+                    <label for="room-code-input">Room Code</label>
+                    <input class="input" type="text" id="room-code-input" placeholder="Enter room code">
+                    <button class="btn btn-secondary" onclick="joinRoom()">
+                        <span class="btn-icon">🔗</span>
+                        Join Room
+                    </button>
+                </div>
+
+                <div id="lobby-error" class="error-message"></div>
+            </div>
+        </div>
+    </div>
+</section>
 
 <!-- ── Waiting ── -->
-<div id="waiting-screen" style="display: none;">
+<div id="waiting-screen" class="screen">
     <div class="waiting-dot"></div>
     <h2 id="waiting-message"></h2>
     <h1 id="countdown-timer"></h1>
-    <button id="start-game-btn" onclick="startGame()" style="display: none; margin-top: 20px; padding: 10px 20px; font-size: 16px;">Start Game</button>
-    <div id="waiting-error" class="error-message" style="display:none; color: #f74f6a;"></div>
+    <button id="start-game-btn" class="btn btn-primary" onclick="startGame()">Start Game</button>
+    <div id="waiting-error" class="error-message"></div>
 </div>
 
 <!-- ── Game ── -->
-<div id="game-screen" style="display:none;" class="game-container">
+<div id="game-screen" class="game-container screen">
 
     <header>
         <div class="timer-room">
@@ -69,9 +129,10 @@
 </div>
 
 <!-- ── Result ── -->
-<div id="result-screen" style="display:none;">
+<div id="result-screen" class="screen">
     <h2>Game Over</h2>
     <pre id="result-data"></pre>
+    <button class="btn btn-primary" onclick="location.reload()">Play Again</button>
 </div>
 
 <script src="websocket.js"></script>

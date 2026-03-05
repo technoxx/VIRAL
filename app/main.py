@@ -2,6 +2,14 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from .room_manager import room_manager
 from .player import Player
 import json
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+
+logger = logging.getLogger("game_server")
 
 app = FastAPI()
 
@@ -11,7 +19,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # create player
     player = Player(websocket)
-    print(f"Player {player.id} welcome!")
+    logger.info(f"Player {player.id} welcome!")
 
     room = None
 
@@ -67,7 +75,7 @@ async def websocket_endpoint(websocket: WebSocket):
             await player.websocket.send_json({"type": "error", "message": "Unknown join type."})
             return
         
-        print(f"Player {player.id} joined Room {room.id if not room.code else room.code} at coordinates ({player.x_coordinate}, {player.y_coordinate})")
+        logger.info(f"Player {player.username} joined Room {room.id if not room.code else room.code} at coordinates ({player.x_coordinate}, {player.y_coordinate})")
 
         while True:
             data = await websocket.receive_text()
@@ -90,7 +98,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
 
     except WebSocketDisconnect:
-        room.remove_player(player.id)
-        print(f"Player {player.id} just left Room {room.id}!")
-        await room.broadcast({"type":"chat", "username": player.username, "room_id": room.id, "message": "left!"})
-        await room.broadcast({"type": "player_disconnected", "player_id": player.id})
+        if room:
+            room.remove_player(player.id)
+            logger.info(f"Player {player.id} just left Room {room.id}!")
+            await room.broadcast({"type":"chat", "username": player.username, "room_id": room.id, "message": "left!"})
+            await room.broadcast({"type": "player_disconnected", "player_id": player.id})
+
+            if len(room.players) == 0:
+                room_manager.delete_room(room.id)
