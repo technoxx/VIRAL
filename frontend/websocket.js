@@ -320,6 +320,18 @@ window.onload = function() {
             log.scrollTop = log.scrollHeight;
         }
 
+        else if (data.type === "no_players_found") {
+            // Go back to lobby
+            showScreen("lobby-screen");
+
+            const notification = document.createElement("div");
+            notification.className = "notification no-players-found";
+            notification.innerText = `⛈ No players available at the moment!`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 2 * 1000);
+        }
+
         // ── Player disconnected ──
         else if (data.type === 'player_disconnected') {
             const id = data.player_id;
@@ -351,18 +363,22 @@ window.onload = function() {
 
         // ── Game end ──
         else if (data.type === 'game_end') {
-            console.log("GAME END DATA:", data);
             showScreen("result-screen");
-            const results = data.result;
-            const winner  = data.winner;
+            let resultText;
+            if(!data.result){
+                resultText = data.message;
+            }else{
+                const results = data.result;
+                const winner  = data.winner;
 
-            let resultText = "🏆 WINNER\n";
-            resultText += `${winner.username} wins with score ${winner.score}\n\n`;
-            resultText += "All Results:\n";
+                resultText = "🏆 WINNER\n";
+                resultText += `${winner.username} wins with score ${winner.score}\n\n`;
+                resultText += "All Results:\n";
 
-            results.forEach(p => {
-                resultText += `${p.username} - Score: ${p.score}\n`;
-            });
+                results.forEach(p => {
+                    resultText += `${p.username} - Score: ${p.score}\n`;
+                });
+            }
             document.getElementById("result-data").innerText = resultText;
         }
 
@@ -385,12 +401,24 @@ window.onload = function() {
             renderCollectibles(data.collectibles);
         }
 
+        else if (data.type === "player_count") {
+            const counter = document.getElementById("room-player-count");
+            if (counter) {
+                const minPlayers = 2;
+                counter.innerText = data.count;
+                if (data.count >= minPlayers) {
+                    counter.innerText += " \n Game is about to begin :)";
+                }
+            }
+        }
+
         else if (data.type === 'player_shield_activated') {
-            console.log("Shield activated for player", data.player_id);
+
             // Find the player and mark their cell as shielded
             const player = playerData[data.player_id];
             if (player) {
                 player.shield_active = true;
+                
                 player.shield_remaining = data.duration; 
 
                 const cell = document.getElementById(`cell-${playerPositions[data.player_id].x}-${playerPositions[data.player_id].y}`);
@@ -407,6 +435,12 @@ window.onload = function() {
         }
 
         else if (data.type === 'freeze_activated') {
+            const notification = document.createElement("div");
+            notification.className = "notification freeze-activated";
+            notification.innerText = `Freeze mode activated! All infected players cannot move.`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 2 * 1000);
+
             // mark freeze window
             freezeActiveUntil = Date.now() + data.duration * 1000;
         

@@ -801,16 +801,28 @@ NOTIFICATIONS
     100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 
-.notification.freeze {
-    background: var(--warn);
-    color: var(--bg);
-    box-shadow: 0 0 20px rgba(247, 199, 79, 0.6);
-}
-
 .notification.round-start {
     background: var(--accent);
     color: var(--bg);
     box-shadow: 0 0 20px rgba(79, 142, 247, 0.6);
+}
+
+.notification.no-players-found {
+    background: var(--accent);
+    color: var(--bg);
+    box-shadow: 0 0 20px rgba(79, 142, 247, 0.6);
+}
+
+.notification.freeze-activated {
+    top: 10%;
+    left: 50%;
+    transform: translate(-50%, 0);
+    background: var(--accent);
+    color: var(--bg);
+    box-shadow: 0 0 20px rgba(79, 142, 247, 0.6);
+    padding: 8px 15px;       /* smaller padding */
+    font-size: 14px;         /* smaller text */
+    border-radius: 6px;
 }
 
 /* ── Healthy player with active shield ── */

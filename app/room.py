@@ -14,7 +14,8 @@ class Room:
         self._game_timer_task: asyncio.Task | None = None
         self.current_round = 0
         self.total_rounds = 3
-
+        self.countdown_duration = 60
+        self.initial_infected_history: set[str] = set()
         self._collectible_spawner_task: asyncio.Task | None = None
         self.collectibles: dict = {}  # {(x, y): 'shield' or 'freeze'}
 
@@ -39,30 +40,53 @@ class Room:
         player.room_id = self.id
         self.players[player.id] = player
 
-        # if room becomes full while waiting, start the game immediately
-        if self.status == "waiting" and self.is_room_ready():
+        await self.broadcast({
+            "type": "player_count",
+            "count": len(self.players),
+        })
+
+        if len(self.players) == 1 and self.status == "waiting":
+            self.countdown_duration = 60
             if not self.code:
                 if not self._countdown_task or self._countdown_task.done():
                     self._countdown_task = asyncio.create_task(self._run_countdown_timer())
 
+        if self.status == "waiting" and self.is_room_ready():
+            self.countdown_duration = 10
+
 
     async def _run_countdown_timer(self):
-        start_time = time.time()
-        end_time = start_time + COUNTDOWN_DURATION
-        
-        try:
-            while True:
-                remaining_time = int(end_time - time.time())
-                if remaining_time <= 0:
-                    break
-                    
-                await self.broadcast({
-                    "type": "countdown_timer",
-                    "remaining_time":remaining_time,
-                    })
-                await asyncio.sleep(1)
 
-            await self.start_game()
+        try:
+            while self.status == "waiting":
+                remaining_time = self.countdown_duration
+                while remaining_time>0 and self.status == "waiting":
+                    await self.broadcast({
+                        "type": "countdown_timer",
+                        "remaining_time":remaining_time,
+                        })
+                    await asyncio.sleep(1)
+                    remaining_time -= 1
+
+                    if self.is_room_ready() and remaining_time > 20:
+                        remaining_time = self.countdown_duration
+                
+                if not self.is_room_ready():
+                    for p in self.players.values():
+                        await p.websocket.send_json({
+                            "type": "no_players_found",
+                            "message": "No players found at the moment"
+                        })
+
+                    # remove players from room
+                    for p in list(self.players.values()):
+                        p.room_id = None
+
+                    self.players.clear()
+                    return
+                
+                await self.start_game()
+                return
         
         except asyncio.CancelledError:
             pass
@@ -72,6 +96,13 @@ class Room:
         if player_id in self.players:
             self.players[player_id].room_id = None
             del self.players[player_id]
+
+        self.initial_infected_history.discard(player_id)
+
+        asyncio.create_task(self.broadcast({
+            "type": "player_count",
+            "count": len(self.players),
+        }))
 
         if self.status == "in_progress" and len(self.players) < MIN_PLAYERS:
             asyncio.create_task(self.end_game())
@@ -89,13 +120,18 @@ class Room:
         return abs(x1 - x2) <= 1 and abs(y1 - y2) <= 1
 
 
-    #check for left, right, up, down, and diagonals
+    #check for left, right, up, down
     async def update_infections(self):
         
-        offsets = [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(-1,1),(1,-1),(1,1)]
+        offsets = [(-1,0),(1,0),(0,-1),(0,1)]
 
         infected_players = [p for p in self.players.values() if p.infected]
 
+        # if frozen, can't infect
+        for player in infected_players:
+            if player.frozen_until and time.time() < player.frozen_until:
+                return
+        
         # collect ids of players that should become infected
         to_infect_ids: set[str] = set()
 
@@ -108,7 +144,7 @@ class Room:
                 other = self.get_player_at_position(nx, ny)
                 if other and not other.infected and not other.is_shielded():
                     to_infect_ids.add(other.id)
-                    p.score += 50
+                    p.score += SPREAD_INFECTION_POINTS
 
         # now apply infections (this prevents chain infections within same cycle)
         newly_infected: list[Player] = []
@@ -207,15 +243,13 @@ class Room:
         self.status = "in_progress"
         self.current_round += 1
         self.collectibles = {}  # Reset collectibles for new round
-        self.freeze_active = False
-        self.freeze_end_time = None
         
-        if len(self.players) ==2:
+        if len(self.players) == 2:
             self.total_rounds = 2
 
         placed_positions = []
 
-        # reset all players to healthy and score to 0, and optionally reposition them randomly
+        # reset all players to healthy, and optionally reposition them randomly
         for p in self.players.values():
             p.infected = False
             p.shield_active = False
@@ -237,8 +271,18 @@ class Room:
                     break
 
         if self.players:
-            infected_player = random.choice(list(self.players.values()))
+            eligible_players = [
+                p for p in self.players.values()
+                if p.id not in self.initial_infected_history
+            ]
+
+            if not eligible_players:
+                self.initial_infected_history.clear()
+                eligible_players = list(self.players.values())
+
+            infected_player = random.choice(eligible_players)
             infected_player.infected = True
+            self.initial_infected_history.add(infected_player.id)
 
         await self.broadcast({
             "type": "game_start",
@@ -311,23 +355,27 @@ class Room:
 
 
     async def _run_collectible_spawner(self):
-        """Spawn collectibles every 20 seconds, starting after 10 seconds into the round"""
         try:
-            # Wait for 10 seconds before first spawn
-            await asyncio.sleep(COLLECTIBLE_SPAWN_DELAY)
             
             while self.status == "in_progress":
-                if self.collectibles:
-                    self.collectibles.clear()
-                    await self.broadcast({
-                        'type': 'collectibles_update',
-                        'collectibles': []
-                    })
-
                 # Spawn random collectibles
-                count = random.randint(2, 3) 
+                num_players = len(self.players)
+                if num_players == 2:
+                    count = random.randint(3, 7)
+                else:  # 3 or 4 players
+                    count = random.randint(3, 5)
+
+                while True:
+                    spawned_types = random.choices(
+                        list(COLLECTIBLE_WEIGHTS.keys()),
+                        weights=list(COLLECTIBLE_WEIGHTS.values()),
+                        k=count
+                    )
+                    # if all types are the same, redraw
+                    if len(set(spawned_types)) > 1 or count == 1:
+                        break
                 
-                for _ in range(count):
+                for ctype in spawned_types:
                     # Find a random empty position
                     while True:
                         x = random.randint(0, GRID_SIZE - 1)
@@ -336,24 +384,37 @@ class Room:
                         # Check if position is empty (no player, no collectible)
                         if not self.is_position_occupied(x, y) and (x, y) not in self.collectibles:
                             break
-                    
-                    collectible_type = random.choices(
-                        list(COLLECTIBLE_WEIGHTS.keys()),
-                        weights=list(COLLECTIBLE_WEIGHTS.values()),
-                        k=1
-                    )[0]
-                    self.collectibles[(x, y)] = collectible_type
+            
+                    self.collectibles[(x, y)] = {
+                        'type': ctype,
+                        'expires_at': time.time() + COLLECTIBLE_LIFETIME
+                    }
                 
                 await self.broadcast({
                     'type': 'collectibles_update',
                     'collectibles': [
-                        {'x': pos[0], 'y': pos[1], 'type': ctype}
-                        for pos, ctype in self.collectibles.items()
+                        {'x': pos[0], 'y': pos[1], 'type': data["type"]}
+                        for pos, data in self.collectibles.items()
                     ]
                 })
                 
                 # Wait until next spawn time
                 await asyncio.sleep(COLLECTIBLE_SPAWN_INTERVAL)
+
+                # Remove expired collectibles individually
+                now = time.time()
+                expired = [pos for pos, data in self.collectibles.items() if data['expires_at'] <= now]
+                for pos in expired:
+                    del self.collectibles[pos]
+
+                if expired:
+                    await self.broadcast({
+                        'type': 'collectibles_update',
+                        'collectibles': [
+                            {'x': pos[0], 'y': pos[1], 'type': data['type']}
+                            for pos, data in self.collectibles.items()
+                        ]
+                    })
         
         except asyncio.CancelledError:
             pass
@@ -369,7 +430,8 @@ class Room:
         if pos  not in self.collectibles:
             return
         
-        collectible_type = self.collectibles[pos]
+        collectible = self.collectibles[pos]  # full dict
+        collectible_type = collectible['type'] 
 
         if collectible_type == 'red_wall':
             if not player.infected and not player.is_shielded():
@@ -402,7 +464,7 @@ class Room:
             })
 
         elif collectible_type == 'score_booster':
-            player.score += 50
+            player.score += BOOSTER_POINTS
         
         # Remove the collected collectible
         del self.collectibles[pos]
@@ -424,13 +486,22 @@ class Room:
         await self.broadcast({
             'type': 'collectibles_update',
             'collectibles': [
-                {'x': p[0], 'y': p[1], 'type': ctype}
-                for p, ctype in self.collectibles.items()
+                {'x': p[0], 'y': p[1], 'type': data['type']}
+                for p, data in self.collectibles.items()
             ]
         })
 
     async def end_game(self):
         # Cancel timer safely if it’s still running
+        if self._collectible_spawner_task and not self._collectible_spawner_task.done():
+            self._collectible_spawner_task.cancel()
+            try:
+                await self._collectible_spawner_task
+            except asyncio.CancelledError:
+                pass
+        
+        self._collectible_spawner_task = None 
+
         if self._game_timer_task and not self._game_timer_task.done():
             self._game_timer_task.cancel()
             try:
@@ -440,19 +511,31 @@ class Room:
 
         self._game_timer_task = None    
 
-        # Cancel collectible spawner if it's still running
-        if self._collectible_spawner_task and not self._collectible_spawner_task.done():
-            self._collectible_spawner_task.cancel()
-            try:
-                await self._collectible_spawner_task
-            except asyncio.CancelledError:
-                pass
-        
-        self._collectible_spawner_task = None   
-
         if self.status != "in_progress":
             return
+        
         self.status = "finished"
+
+        if not self.is_room_ready():
+            await asyncio.sleep(2)
+            await self.broadcast({
+                "type": "game_end",
+                "message": "Not enough players to continue."
+            })
+            return
+        
+        # Reward players who survived the round healthy
+        healthy_players = [p for p in self.players.values() if not p.infected]
+
+        # If exactly one healthy player → last survivor
+        if len(healthy_players) == 1:
+            last_survivor = healthy_players[0]
+            last_survivor.score += HEALTHY_SURVIVAL_POINTS + LAST_SURVIVOR_BONUS
+
+        # If multiple survivors (timer ended)
+        else:
+            for p in healthy_players:
+                p.score += HEALTHY_SURVIVAL_POINTS
 
         if self.current_round < self.total_rounds:
             self.status = "waiting"  # prepare for next round
