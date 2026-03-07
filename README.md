@@ -33,6 +33,16 @@
 
 VIRAL is an exciting real-time multiplayer game where players navigate a 15×15 grid, trying to avoid infection while collecting power-ups and scoring points. Built with modern web technologies, it features WebSocket-powered real-time gameplay for up to 4 players per room.
 
+**Live Demo** 🎬
+
+Try VIRAL right now in your browser!  
+
+[▶️ Click to Play](https://viralgame.up.railway.app/)  
+
+Note: This is a multiplayer game. To test it yourself, open the game in 2–4 browser tabs or different devices, and then join. You can also invite your friends to join the same room :)
+
+
+
 ## ✨ Features
 
 - **Real-time Multiplayer**: Join random rooms or create custom rooms with room codes
