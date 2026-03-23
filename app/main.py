@@ -2,10 +2,10 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from .room_manager import room_manager
 from .player import Player
 import json, logging
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
-import os
+
+FRONTEND_URL = "https://viral-simulation.vercel.app"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,27 +19,24 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://viralgame.up.railway.app",
-        "https://viral-simulation.vercel.app"
+        FRONTEND_URL
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
 @app.get("/")
-async def root():
-    return FileResponse("frontend/index.html")
+def root():
+    return RedirectResponse(FRONTEND_URL)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     origin = websocket.headers.get("origin")
 
     allowed_origins = [
-        "https://viralgame.up.railway.app",
-        "https://viral-simulation.vercel.app"
+        FRONTEND_URL
     ]
 
     if origin not in allowed_origins:
