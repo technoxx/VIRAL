@@ -543,36 +543,95 @@
         transition: background 0.2s ease, box-shadow 0.2s ease;
         position: relative;
     }
+    @keyframes player-idle {
+    0% {
+        box-shadow: 0 0 4px rgba(255, 255, 255, 0.12);
+    }
+    50% {
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.22);
+    }
+    100% {
+        box-shadow: 0 0 4px rgba(255, 255, 255, 0.12);
+    }
+}
+
+.cell.player:not(.infected):not(.shielded):not(.frozen) {
+    animation: player-idle 2.2s infinite ease-in-out;
+}
     .cell.player {
-        background-color: transparent;       /* no solid blue */
-        border: 2px solid rgba(255, 255, 255, 0.671); /* white boundary */
-        box-shadow: 0 0 4px rgba(255, 255, 255, 0.2); /* subtle glow if desired */
+    text-align: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.15);
+    position: relative;
+}
+    @keyframes infected-pulse {
+        0% {
+            box-shadow: 0 0 4px rgba(247,79,106,0.4),
+                        0 0 8px rgba(247,79,106,0.2);
+        }
+        50% {
+            box-shadow: 0 0 10px rgba(247,79,106,0.85),
+                        0 0 16px rgba(247,79,106,0.45);
+        }
+        100% {
+            box-shadow: 0 0 4px rgba(247,79,106,0.4),
+                        0 0 8px rgba(247,79,106,0.2);
+        }
     }
     .cell.infected {
-        background-color: rgba(247,79,106,0.2); /* transparent red */
-        border-color: rgba(247,79,106,0.4);     /* soft red border */
-        box-shadow: 0 0 6px rgba(247,79,106,0.35); /* faint red glow */
+    background-color: rgba(247,79,106,0.15);
+    border: 2px solid rgba(247,79,106,0.6);
+    animation: infected-pulse 1.2s infinite ease-in-out;
     }
     .cell.shield {
-        background: transparent;          /* no solid background */
-        border: 2px solid rgba(79, 247, 168, 0.5);
-        box-shadow: 0 0 4px rgba(79, 247, 168, 0.3);
-        position: relative;
+    background: rgba(79, 247, 168, 0.18);
+    border: 2px solid rgba(79, 247, 168, 0.5);
+    box-shadow: 0 0 8px rgba(79, 247, 168, 0.4);
+    position: relative;
+}
+    @keyframes shield-pulse {
+    0% {
+        box-shadow: 0 0 4px rgba(79, 247, 168, 0.4),
+                    0 0 8px rgba(79, 247, 168, 0.2);
     }
+    50% {
+        box-shadow: 0 0 10px rgba(79, 247, 168, 0.85),
+                    0 0 16px rgba(79, 247, 168, 0.45);
+    }
+    100% {
+        box-shadow: 0 0 4px rgba(79, 247, 168, 0.4),
+                    0 0 8px rgba(79, 247, 168, 0.2);
+    }
+}
     /* visual indicator when a player has active shield */
     /* Shield activated players */
     .cell.shielded {
-        position: relative;  /* required for overlay */
-        background-color: rgba(79, 247, 168, 0.2); /* transparent green layer */
-        border: 2px solid rgba(79, 247, 168, 0.8); /* bright green boundary */
-        box-shadow: 0 0 10px rgba(79, 247, 168, 0.5); /* subtle glow */
-        border-radius: 3px;
+    background-color: rgba(79, 247, 168, 0.15);
+    border: 2px solid rgba(79, 247, 168, 0.5);
+    animation: shield-pulse 1.2s infinite ease-in-out;
+}  
+@keyframes freeze-pulse {
+    0% {
+        box-shadow: 0 0 4px rgba(79, 166, 247, 0.35),
+                    0 0 8px rgba(79, 166, 247, 0.2);
     }
+    50% {
+        box-shadow: 0 0 10px rgba(79, 166, 247, 0.85),
+                    0 0 16px rgba(79, 166, 247, 0.45);
+    }
+    100% {
+        box-shadow: 0 0 4px rgba(79, 166, 247, 0.35),
+                    0 0 8px rgba(79, 166, 247, 0.2);
+    }
+} 
     /* when infected players are frozen */
     .cell.frozen {
-        box-shadow: 0 0 12px rgba(79,166,247,0.8);
-        border: 2px solid #4faef7;
-    }
+    background-color: rgba(79, 166, 247, 0.15);
+    border: 2px solid rgba(79, 166, 247, 0.7);
+    filter: saturate(0.9) brightness(1.05);
+    animation: freeze-pulse 1.2s infinite ease-in-out;
+}
     .cell.shield::before {
         content: '✦';
         position: absolute;
@@ -583,11 +642,11 @@
         color: #4ff7a8; /* green shield symbol */
     }
     .cell.freeze {
-        background: transparent;          /* no solid background */
-        border: 2px solid rgba(79, 166, 247, 0.5);
-        box-shadow: 0 0 4px rgba(79, 166, 247, 0.3);
-        position: relative;
-    }
+    background: rgba(79, 166, 247, 0.18);
+    border: 2px solid rgba(79, 166, 247, 0.75);
+    box-shadow: 0 0 8px rgba(79, 166, 247, 0.4);
+    position: relative;
+}
     .cell.freeze::before {
         content: '❄';
         position: absolute;

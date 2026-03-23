@@ -14,7 +14,7 @@ class Room:
         self._game_timer_task: asyncio.Task | None = None
         self.current_round = 0
         self.total_rounds = 3
-        self.countdown_duration = 60
+        self.countdown_duration = 30
         self.initial_infected_history: set[str] = set()
         self._collectible_spawner_task: asyncio.Task | None = None
         self.collectibles: dict = {}  # {(x, y): 'shield' or 'freeze'}
@@ -46,7 +46,7 @@ class Room:
         })
 
         if len(self.players) == 1 and self.status == "waiting":
-            self.countdown_duration = 60
+            self.countdown_duration = 30
             if not self.code:
                 if not self._countdown_task or self._countdown_task.done():
                     self._countdown_task = asyncio.create_task(self._run_countdown_timer())
@@ -177,6 +177,16 @@ class Room:
 
     async def move_player(self, player:Player, direction:str):
 
+        now = time.time()
+        if now - player.last_move_time < MOVE_COOLDOWN:
+            return  # ignore extra inputs
+        
+        # RATE LIMIT CHECK
+        if self.is_rate_limited(player):
+            return # ignore
+
+        player.last_move_time = now
+
         if player.frozen_until and time.time() < player.frozen_until:
             return  # player is frozen, cannot move
         
@@ -223,6 +233,20 @@ class Room:
 
         await self.update_infections()
 
+    
+    def is_rate_limited(self, player: Player, limit=20, window=1.0):
+        now = time.time()
+
+        # Remove timestamps older than the window
+        while player.move_timestamps and now - player.move_timestamps[0] > window:
+            player.move_timestamps.popleft()
+
+        if len(player.move_timestamps) >= limit:
+            return True
+
+        player.move_timestamps.append(now)
+        return False
+
 
     async def broadcast(self, message:dict):
         disconnected = []
@@ -254,6 +278,7 @@ class Room:
             p.infected = False
             p.shield_active = False
             p.shield_end_time = None
+            p.frozen_until = None
             for _ in range(50):
                 x = random.randint(0, GRID_SIZE-1)
                 y = random.randint(0, GRID_SIZE-1)
@@ -361,9 +386,9 @@ class Room:
                 # Spawn random collectibles
                 num_players = len(self.players)
                 if num_players == 2:
-                    count = random.randint(3, 7)
+                    count = random.randint(5,10)
                 else:  # 3 or 4 players
-                    count = random.randint(3, 5)
+                    count = random.randint(3, 7)
 
                 while True:
                     spawned_types = random.choices(

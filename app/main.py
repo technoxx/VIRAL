@@ -4,6 +4,8 @@ from .player import Player
 import json, logging
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+import os
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,7 +16,17 @@ logger = logging.getLogger("game_server")
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        os.getenv("FRONTEND_URL")  # deployed frontend
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
 @app.get("/")
 async def root():
@@ -22,6 +34,16 @@ async def root():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    origin = websocket.headers.get("origin")
+
+    allowed_origins = [
+        os.getenv("FRONTEND_URL")
+    ]
+
+    if origin not in allowed_origins:
+        await websocket.close(code=1008)
+        return
+    
     await websocket.accept()
 
     # create player

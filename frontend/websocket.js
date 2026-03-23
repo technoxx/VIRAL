@@ -39,12 +39,9 @@ function stringToColor(str) {
         hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
 
-    const color = (hash & 0x00FFFFFF)
-        .toString(16)
-        .toUpperCase()
-        .padStart(6, '0');
+    const hue = Math.abs(hash) % 360;
 
-    return color;
+    return `hsl(${hue}, 90%, 55%)`;
 }
 
 function getAvatarForPlayer(player_id, size = 20) {

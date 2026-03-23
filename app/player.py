@@ -1,6 +1,7 @@
 import uuid
 import time
 from fastapi import WebSocket
+from collections import deque
 
 class Player:
     def __init__(self, websocket: WebSocket):
@@ -11,6 +12,8 @@ class Player:
         self.x_coordinate = 0
         self.y_coordinate = 0
         self.infected = False
+        self.last_move_time = 0
+        self.move_timestamps = deque()  # stores recent move times
         self.score = 0
         self.shield_active = False
         self.shield_end_time = None
