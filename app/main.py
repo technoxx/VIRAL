@@ -19,7 +19,8 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        os.getenv("FRONTEND_URL")  # deployed frontend
+        "https://viralgame.up.railway.app",
+        "https://viral-simulation.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -37,7 +38,8 @@ async def websocket_endpoint(websocket: WebSocket):
     origin = websocket.headers.get("origin")
 
     allowed_origins = [
-        os.getenv("FRONTEND_URL")
+        "https://viralgame.up.railway.app",
+        "https://viral-simulation.vercel.app"
     ]
 
     if origin not in allowed_origins:
