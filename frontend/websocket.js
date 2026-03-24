@@ -131,7 +131,7 @@ function sanitizeUsername(username) {
 }
 
 function getUsername() {
-    const username = document.getElementById("username-input").value.trim();
+    let username = document.getElementById("username-input").value.trim();
     const MAX_LENGTH = 20;
     if (username === "") return showError("Enter a username!");
     username = sanitizeUsername(username);
