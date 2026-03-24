@@ -394,9 +394,9 @@ class Room:
                 # Spawn random collectibles
                 num_players = len(self.players)
                 if num_players == 2:
-                    count = random.randint(5,10)
+                    count = random.randint(7,11)
                 else:  # 3 or 4 players
-                    count = random.randint(3, 7)
+                    count = random.randint(6, 10)
 
                 while True:
                     spawned_types = random.choices(

@@ -19,7 +19,7 @@ HEALTHY_SURVIVAL_POINTS = 70
 LAST_SURVIVOR_BONUS = 50
 SPREAD_INFECTION_POINTS = 80
 COLLECTIBLE_WEIGHTS = {
-    'shield': 0.5,
+    'shield': 1.2,
     'freeze': 0.5,
     'red_wall': 6,
     'score_booster': 5,

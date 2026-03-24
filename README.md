@@ -39,7 +39,7 @@ Try VIRAL right now in your browser!
 
 [▶️ Click to Play](https://viralgame.up.railway.app/)  
 
-Note: This is a multiplayer game. To test it yourself, open the game in 2–4 browser tabs or different devices, and then join. You can also invite your friends to join the same room :)
+Note: This is a multiplayer game. To test it yourself, open the game in 2–4 browser tabs or different devices, and then join. But better to invite your friends and play together :D
 
 
 
@@ -68,6 +68,14 @@ Note: This is a multiplayer game. To test it yourself, open the game in 2–4 br
 - **Responsive UI**: Modern CSS with custom properties and smooth animations
 - **Error Handling**: Comprehensive error handling for network issues and invalid moves
 
+### Backend Stability & Performance
+The game server is designed to handle real-time multiplayer gameplay safely using asyncio.
+
+- **Rate Limiting**: Prevents movement spam (20 moves/sec per player)
+- **Movement Cooldowns**: Ensures smooth grid-based movement
+- **Race Condition Protection**: Prevents duplicate game start/end, infection bugs, and shared  state conflicts using internal state flags (_starting, _ending)
+- **Safe Async Handling**: WebSocket broadcasts and game loops are protected against concurrent updates
+
 ## 🎯 How to Play
 
 ### Objective
@@ -94,14 +102,7 @@ Navigate the 15×15 grid, avoid getting infected, collect power-ups, and score t
 - **Healthy Survival**: 70 points for surviving a round as healthy
 - **Last Survivor Bonus**: Additional 50 points for being the last healthy player
 - **Infection Spread**: 80 points each time you infect another player
-- **Power-up Collection**: Varies by power-up type (see above)
-
-### Scoring System
-
-- **Healthy Survival**: 70 points for surviving a round as healthy
-- **Last Survivor Bonus**: Additional 50 points for being the last healthy player
-- **Infection Spread**: 80 points each time you infect another player
-- **Power-up Collection**: Varies by power-up type (see above)
+- **Power-up Collection**: Varies by power-up type
 
 ## 🛠️ Tech Stack
 
@@ -117,15 +118,11 @@ Navigate the 15×15 grid, avoid getting infected, collect power-ups, and score t
 - **WebSocket API**: Real-time communication
 
 ### Deployment
-- **Railway**: Cloud platform deployment
+- **Vercel**: Frontend
+- **Railway**: FastAPI backend
 - **Gunicorn/Uvicorn**: ASGI server
-- **HTML5/CSS3**: Modern responsive UI
-- **JavaScript (ES6+)**: Client-side game logic
 - **WebSocket API**: Real-time communication
 
-### Deployment
-- **Railway**: Cloud platform deployment
-- **Gunicorn/Uvicorn**: ASGI server
 
 ## 🚀 Installation & Setup
 
@@ -160,11 +157,6 @@ Navigate the 15×15 grid, avoid getting infected, collect power-ups, and score t
    uvicorn app.main:app --reload
    ```
 
-5. **Open your browser**
-   ```
-   http://localhost:8000
-   ```
-
 ## 🎮 Game Controls
 
 - **Arrow Keys**: Move your player (Up, Down, Left, Right)
@@ -191,35 +183,5 @@ frontend/
 ├── index.css        # Styling with CSS custom properties
 └── websocket.js     # Client-side game logic and WebSocket handling
 ```
-
-### Key Components
-
-- **Room Manager**: Handles room creation, player assignment, and cleanup
-- **Game Room**: Manages game state, player positions, collectibles, and round progression
-- **Player**: Individual player state including position, infection status, and score
-- **WebSocket Communication**: Real-time bidirectional messaging for game updates
-- **Collectible System**: Dynamic spawning and collection of power-ups
-- **Infection Mechanics**: Adjacent player infection with directional spread
-
-## 🤝 Contributing
-
-Here's how you can help:
-
-1. **Fork the repository**
-2. **Create a feature branch**
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-3. **Make your changes**
-4. **Test thoroughly**
-5. **Submit a pull request**
-
-### Development Guidelines
-
-- Follow PEP 8 Python style guidelines
-- Write clear, documented code
-- Test WebSocket connections and game logic
-
----
 
 **Have fun playing VIRAL! 🎮**
