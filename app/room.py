@@ -4,7 +4,7 @@ from .player import Player
 from .constants import *
 
 class Room:
-    def __init__(self, code:str = None, creator: Player = None):
+    def __init__(self, code:str = None, creator: Player = None) -> None:
         self.id = uuid.uuid4().hex[:8]
         self.code = code  # None for random room
         self.creator = creator  # None for random room
@@ -26,7 +26,7 @@ class Room:
     def is_room_full(self):
         return len(self.players) >= MAX_PLAYERS
     
-    def is_room_Empty(self):
+    def is_room_empty(self):
         return len(self.players) == 0
     
     def is_room_joinable(self):

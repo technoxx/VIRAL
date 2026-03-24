@@ -1,11 +1,11 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from .room_manager import room_manager
 from .player import Player
-import json, logging
+import json, logging, os
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-FRONTEND_URL = "https://viral-simulation.vercel.app"
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,7 +14,7 @@ logging.basicConfig(
 
 logger = logging.getLogger("game_server")
 
-app = FastAPI()
+app = FastAPI(title="VIRAL - Infection Simulator")
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,6 +30,10 @@ app.add_middleware(
 @app.get("/")
 def root():
     return RedirectResponse(FRONTEND_URL)
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -53,10 +57,25 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         data = await websocket.receive_text()
-        message = json.loads(data)
 
-        if message["type"] == "join_random_room":
-            player.username = message.get("username")
+        try:
+            message = json.loads(data)
+        except json.JSONDecodeError:
+            await websocket.send_json({"type": "error", "message": "Invalid JSON."})
+            await websocket.close()
+            return
+        
+        msg_type = message.get("type")
+        username  = message.get("username")
+ 
+        if not username:
+            await websocket.send_json({"type": "error", "message": "Username is required."})
+            await websocket.close()
+            return
+ 
+        player.username = username
+
+        if msg_type == "join_random_room":
             # create room
             room = room_manager.get_available_room()
             if not room:
@@ -67,8 +86,7 @@ async def websocket_endpoint(websocket: WebSocket):
             if room.status == "waiting":
                 await player.websocket.send_json({"type":"room_joined"})
 
-        elif message["type"] == "create_room":
-            player.username = message.get("username")
+        elif msg_type == "create_room":
             room = room_manager.create_custom_room(player)
             await room.add_player(player)
             # broadcast room creation to the room (creator only at this point)
@@ -78,15 +96,20 @@ async def websocket_endpoint(websocket: WebSocket):
                 "creator_id": room.creator.id,
             })
 
-        elif message["type"] == "join_room":
-            player.username = message.get("username")
+        elif msg_type == "join_room":
             code = message.get("code")
+            if not code:
+                await websocket.send_json({"type": "error", "message": "Room code is required."})
+                await websocket.close()
+                return
+
             room = room_manager.get_room_by_code(code)
             if not room:
                 await player.websocket.send_json({
                 "type": "error",
                 "message": f"Room {code} not found!"
                 })
+                await websocket.close()
                 return
             
             if room.status != "waiting":
@@ -94,30 +117,39 @@ async def websocket_endpoint(websocket: WebSocket):
                     "type": "error",
                     "message": f"Room {code} already started!"
                 })
+                await websocket.close()
                 return
             await room.add_player(player)
             # Send joining message to all players in room (only if game hasn't started)
-            if room.status == "waiting":
-                await player.websocket.send_json({"type":"room_joined", "code": room.code, "creator_id": room.creator.id})
+            await player.websocket.send_json({"type":"room_joined", "code": room.code, "creator_id": room.creator.id})
         else:
-            await player.websocket.send_json({"type": "error", "message": "Unknown join type."})
+            await websocket.send_json({"type": "error", "message": "Unknown message type."})
+            await websocket.close()
             return
         
         logger.info(f"Player {player.username} joined Room {room.id if not room.code else room.code} at coordinates ({player.x_coordinate}, {player.y_coordinate})")
 
         while True:
             data = await websocket.receive_text()
-            message = json.loads(data)
+            try:
+                message = json.loads(data)
+            except json.JSONDecodeError:
+                await websocket.send_json({"type": "error", "message": "Invalid JSON."})
+                continue
 
-            if message["type"] == "move":
-                await room.move_player(player, message["direction"])
+            msg_type = message.get("type")
 
-            elif message["type"] == "chat":
+            if msg_type == "move":
+                direction = message.get("direction", "")
+                if direction in ("up", "down", "left", "right"):
+                    await room.move_player(player, direction)
+
+            elif msg_type == "chat":
                 await room.broadcast({"type":"chat", "username": player.username, "room_id": room.id, "message": message.get("value", "")})
             
-            elif message["type"] == "start_game":
+            elif msg_type == "start_game":
                 # Only creator can start the game
-                if room.creator and room.creator.id == player.id and room.is_room_ready():
+                if (room.creator and room.creator.id == player.id and room.is_room_ready()):
                     await room.start_game()
                 else:
                     await player.websocket.send_json({
@@ -132,5 +164,9 @@ async def websocket_endpoint(websocket: WebSocket):
             await room.broadcast({"type":"chat", "username": player.username, "room_id": room.id, "message": "left!"})
             await room.broadcast({"type": "player_disconnected", "player_id": player.id})
 
-            if len(room.players) == 0:
+            if room.is_room_empty():
                 room_manager.delete_room(room.id)
+    except Exception as exc:
+        logger.exception("Unexpected error for player %s: %s", player.id, exc)
+        if room:
+            room.remove_player(player.id)

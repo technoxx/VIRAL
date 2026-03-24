@@ -117,8 +117,6 @@ function refreshPlayerPanel() {
         infected: p.infected,
     }));
 
-    console.log(players);
-
     // Sort: healthy first, then by score descending
     players.sort((a, b) => {
         if (a.infected !== b.infected) return a.infected ? 1 : -1;
@@ -128,9 +126,24 @@ function refreshPlayerPanel() {
     window.updatePlayers(players);
 }
 
+function sanitizeUsername(username) {
+    return username.replace(/[^a-zA-Z0-9_.]/g, "");
+}
+
 function getUsername() {
     const username = document.getElementById("username-input").value.trim();
+    const MAX_LENGTH = 20;
     if (username === "") return showError("Enter a username!");
+    username = sanitizeUsername(username);
+
+    if (username.length === 0) {
+        showError("Username contains invalid characters!");
+        return;
+    }
+    if (username.length > MAX_LENGTH) {
+        showError(`Username must be under ${MAX_LENGTH} characters`);
+        return;
+    }
     showError("");
     return username;
 }
@@ -232,7 +245,6 @@ window.joinRoom = function() {
 }
 
 window.startGame = function() {
-    console.log("START BUTTON CLICKED");
     ws.send(JSON.stringify({ type: "start_game" }));
 }
 
@@ -312,7 +324,10 @@ window.onload = function() {
             const msg = document.createElement("div");
             const sender = playerData[data.username];
             msg.className = "message " + (sender?.infected ? "infected" : "player");
-            msg.innerHTML = `<strong>${data.username}:</strong> ${data.message}`;
+            const strong = document.createElement("strong");
+            strong.textContent = data.username + ": ";
+            msg.appendChild(strong);
+            msg.appendChild(document.createTextNode(data.message));
             log.appendChild(msg);
             log.scrollTop = log.scrollHeight;
         }
