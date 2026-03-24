@@ -12,6 +12,8 @@ class Room:
         self.players : dict[str, Player] = {}   # {player_1_id : Player(), player_2_id : Player()}
         self._countdown_task: asyncio.Task | None = None
         self._game_timer_task: asyncio.Task | None = None
+        self._starting = False
+        self._ending = False
         self.current_round = 0
         self.total_rounds = 3
         self.countdown_duration = 30
@@ -48,8 +50,10 @@ class Room:
         if len(self.players) == 1 and self.status == "waiting":
             self.countdown_duration = 30
             if not self.code:
-                if not self._countdown_task or self._countdown_task.done():
-                    self._countdown_task = asyncio.create_task(self._run_countdown_timer())
+                if self._countdown_task and not self._countdown_task.done():
+                    return
+                
+                self._countdown_task = asyncio.create_task(self._run_countdown_timer())
 
         if self.status == "waiting" and self.is_room_ready():
             self.countdown_duration = 10
@@ -104,7 +108,7 @@ class Room:
             "count": len(self.players),
         }))
 
-        if self.status == "in_progress" and len(self.players) < MIN_PLAYERS:
+        if self.status == "in_progress" and not self._ending and len(self.players) < MIN_PLAYERS:
             asyncio.create_task(self.end_game())
 
     def get_player_at_position(self, x, y):
@@ -250,7 +254,7 @@ class Room:
 
     async def broadcast(self, message:dict):
         disconnected = []
-        for player_id, player in self.players.items():
+        for player_id, player in list(self.players.items()):
             try:
                 await player.websocket.send_json(message)
             except Exception:
@@ -261,9 +265,11 @@ class Room:
 
 
     async def start_game(self):
-        if self.status != "waiting":
+        if self.status != "waiting" or self._starting:
             return
         
+        self._starting = True
+        self._ending = False
         self.status = "in_progress"
         self.current_round += 1
         self.collectibles = {}  # Reset collectibles for new round
@@ -335,6 +341,8 @@ class Room:
         
         if not self._collectible_spawner_task or self._collectible_spawner_task.done():
             self._collectible_spawner_task = asyncio.create_task(self._run_collectible_spawner())
+
+        self._starting = False
 
     async def _run_game_timer(self):
         start_time = time.time()
@@ -452,10 +460,9 @@ class Room:
         
         pos = (player.x_coordinate, player.y_coordinate)
         
-        if pos  not in self.collectibles:
+        collectible = self.collectibles.pop(pos, None)
+        if not collectible:
             return
-        
-        collectible = self.collectibles[pos]  # full dict
         collectible_type = collectible['type'] 
 
         if collectible_type == 'red_wall':
@@ -491,8 +498,6 @@ class Room:
         elif collectible_type == 'score_booster':
             player.score += BOOSTER_POINTS
         
-        # Remove the collected collectible
-        del self.collectibles[pos]
 
         # Broadcast updated player score/state
         await self.broadcast({
@@ -517,6 +522,10 @@ class Room:
         })
 
     async def end_game(self):
+        if self._ending or self.status != "in_progress":
+            return
+
+        self._ending = True
         # Cancel timer safely if it’s still running
         if self._collectible_spawner_task and not self._collectible_spawner_task.done():
             self._collectible_spawner_task.cancel()
