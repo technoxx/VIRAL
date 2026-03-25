@@ -2,6 +2,7 @@
 const playerPositions = {};
 const assignedAvatars = new Set();
 let ws;
+let myPlayerId = null;
 const playerData = {};   // stores { health, score, infected, name, shield_active } keyed by player_id
 const collectibles = {}; // stores collectible positions: {(x,y): 'shield'|'freeze'}
 let freezeActiveUntil = 0; // timestamp until which infected are frozen
@@ -280,9 +281,11 @@ window.onload = function() {
 
     ws.onmessage = function(event) {
         const data = JSON.parse(event.data);
+        console.log("[WS IN]", JSON.stringify(data));
 
         if (data.type === "room_created"){
             creatorId = data.creator_id;
+            myPlayerId = data.creator_id;
             showScreen("waiting-screen");
             
             const info = document.getElementById("waiting-message");
@@ -370,6 +373,14 @@ window.onload = function() {
             // Clear old collectibles
             for (const key in collectibles) delete collectibles[key];
             
+            // Capture own player id by matching username typed (covers non-creators)
+            if (!myPlayerId) {
+                const myUsername = document.getElementById("username-input")?.value.trim();
+                if (myUsername) {
+                    const me = data.players.find(p => p.username === myUsername);
+                    if (me) myPlayerId = me.player_id;
+                }
+            }
             updatePlayersOnGrid(data.players);
         }
 
@@ -445,6 +456,27 @@ window.onload = function() {
             if (data.freeze_event) {
                 applyFreezeActivated(data.freeze_event.duration);
             }
+
+            // Red wall: broadcast to everyone, "you" vs name based on myPlayerId
+            if (data.red_wall_event) {
+                const pid = data.red_wall_event.player_id;
+                const isSelf = pid === myPlayerId;
+                const name = (playerData[pid] && playerData[pid].name) ? playerData[pid].name : "A player";
+                const text = isSelf
+                    ? "☠️ You stepped on a red wall and got infected!"
+                    : "☠️ " + name + " stepped on a red wall and got infected!";
+                showToast("red-wall-infected", text, 3500);
+            }
+        }
+
+        // Shield notification — server sends this only to the shield collector
+        else if (data.type === "shield_notification") {
+            showToast("shield-activated", "🛡️ Shield activated!", 3000);
+        }
+
+        // Proximity infection — server sends this only to the newly infected player
+        else if (data.type === "proximity_infected") {
+            showToast("proximity-infected", "Oh no, you got infected by a nearby player!", 3000);
         }
 
         // Shield activated 
@@ -467,6 +499,15 @@ window.onload = function() {
             updatePlayersOnGrid(data.player_data);
         }
     };
+
+    // Generic toast — creates a styled notification at top of screen
+    function showToast(cssClass, text, ms) {
+        const el = document.createElement("div");
+        el.className = "notification " + cssClass;
+        el.innerText = text;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), ms);
+    }
 
     // Shield helper 
     function applyShieldActivated(player_id, duration) {

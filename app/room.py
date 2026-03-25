@@ -214,6 +214,13 @@ class Room:
         for p in newly_infected:
             p.infected = True
 
+        # Notify each newly infected player directly (only they receive this)
+        for p in newly_infected:
+            try:
+                await p.websocket.send_json({"type": "proximity_infected"})
+            except Exception:
+                pass
+
         # one combined broadcast 
         payload: dict = {
             "type": "state_update",
@@ -288,6 +295,7 @@ class Room:
                 for p in self.players.values():
                     if p.infected and p.id != player.id:
                         p.score += RED_WALL_POINTS
+                extra["red_wall_event"] = {"player_id": player.id}
 
         elif ctype == "shield":
             player.activate_shield(SHIELD_DURATION)
@@ -296,6 +304,14 @@ class Room:
                 "player_id": player.id,
                 "duration": SHIELD_DURATION,
             }
+            # Only notify the player who collected the shield
+            try:
+                await player.websocket.send_json({
+                    "type": "shield_notification",
+                    "duration": SHIELD_DURATION,
+                })
+            except Exception:
+                pass
 
         elif ctype == "freeze":
             freeze_until = time.time() + FREEZE_DURATION

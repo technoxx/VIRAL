@@ -1,4 +1,4 @@
-﻿    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&display=swap');
 
     /* ── Reset ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -872,16 +872,50 @@ NOTIFICATIONS
     box-shadow: 0 0 20px rgba(79, 142, 247, 0.6);
 }
 
-.notification.freeze-activated {
+/* ── Top-of-screen toast base (overrides centered .notification) ── */
+.notification.freeze-activated,
+.notification.shield-activated,
+.notification.proximity-infected,
+.notification.red-wall-infected {
     top: 10%;
     left: 50%;
     transform: translate(-50%, 0);
+    padding: 10px 18px;
+    font-size: 14px;
+    border-radius: 6px;
+    animation: notification-slide-down 0.3s ease-out;
+}
+
+@keyframes notification-slide-down {
+    from { transform: translate(-50%, -16px); opacity: 0; }
+    to   { transform: translate(-50%, 0);     opacity: 1; }
+}
+
+.notification.freeze-activated {
     background: var(--accent);
     color: var(--bg);
     box-shadow: 0 0 20px rgba(79, 142, 247, 0.6);
-    padding: 8px 15px;       /* smaller padding */
-    font-size: 14px;         /* smaller text */
-    border-radius: 6px;
+}
+
+/* Shield — only shown to the player who collected it */
+.notification.shield-activated {
+    background: var(--success);
+    color: var(--bg);
+    box-shadow: 0 0 20px rgba(79, 247, 168, 0.6);
+}
+
+/* Proximity infection — only shown to the player who got infected */
+.notification.proximity-infected {
+    background: var(--danger);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(247, 79, 106, 0.7);
+}
+
+/* Red wall — shown to all players */
+.notification.red-wall-infected {
+    background: #8b0000;
+    color: #fff;
+    box-shadow: 0 0 20px rgba(139, 0, 0, 0.7);
 }
 
 /* ── Healthy player with active shield ── */
@@ -930,4 +964,36 @@ NOTIFICATIONS
 #result-screen > * {
     position: relative;       /* ensure content is above the pseudo-element */
     z-index: 1;
+}
+/* ── Notification toasts ── */
+.notification.shield-activated,
+.notification.proximity-infected,
+.notification.red-wall-infected {
+    top: 8%;
+    left: 50%;
+    transform: translate(-50%, 0);
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 6px;
+    animation: toast-slide-in 0.3s ease-out;
+}
+@keyframes toast-slide-in {
+    from { opacity: 0; transform: translate(-50%, -12px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+}
+.notification.shield-activated {
+    background: var(--success);
+    color: var(--bg);
+    box-shadow: 0 0 18px rgba(79, 247, 168, 0.6);
+}
+.notification.proximity-infected {
+    background: var(--danger);
+    color: #fff;
+    box-shadow: 0 0 18px rgba(247, 79, 106, 0.7);
+}
+.notification.red-wall-infected {
+    background: #8b0000;
+    color: #fff;
+    box-shadow: 0 0 18px rgba(180, 0, 0, 0.7);
 }
