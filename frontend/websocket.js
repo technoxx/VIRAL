@@ -385,7 +385,7 @@ window.onload = function() {
 
                 resultText = "🏆 WINNER\n";
                 resultText += `${winner.username} wins with score ${winner.score}\n\n`;
-                resultText += "All Results:\n";
+                resultText += "Scoreboard:\n";
 
                 results.forEach(p => {
                     resultText += `${p.username} - Score: ${p.score}\n`;
@@ -424,55 +424,37 @@ window.onload = function() {
             }
         }
 
-        else if (data.type === 'player_shield_activated') {
+        // Batched state update
+        else if (data.type === 'state_update') {
+            // Update all changed players in one pass
+            if (data.players && data.players.length) {
+                updatePlayersOnGrid(data.players);
+            }
 
-            // Find the player and mark their cell as shielded
-            const player = playerData[data.player_id];
-            if (player) {
-                player.shield_active = true;
-                
-                player.shield_remaining = data.duration; 
+            // Collectibles
+            if (data.collectibles) {
+                renderCollectibles(data.collectibles);
+            }
 
-                const cell = document.getElementById(`cell-${playerPositions[data.player_id].x}-${playerPositions[data.player_id].y}`);
-                if (!player.infected && cell && player.shield_active) {
-                    cell.classList.add('shielded');
+            // Shield activated for a player
+            if (data.shield_event) {
+                applyShieldActivated(data.shield_event.player_id, data.shield_event.duration);
+            }
 
-                    setTimeout(() => {
-                        player.shield_active = false;
-                        const cell = document.getElementById(`cell-${playerPositions[data.player_id].x}-${playerPositions[data.player_id].y}`);
-                        if (cell) cell.classList.remove('shielded');
-                    }, data.duration * 1000);
-                }
+            // Freeze activated
+            if (data.freeze_event) {
+                applyFreezeActivated(data.freeze_event.duration);
             }
         }
 
-        else if (data.type === 'freeze_activated') {
-            const notification = document.createElement("div");
-            notification.className = "notification freeze-activated";
-            notification.innerText = `Freeze mode activated! All infected players cannot move.`;
-            document.body.appendChild(notification);
-            setTimeout(() => notification.remove(), 2 * 1000);
+        // Shield activated 
+        else if (data.type === 'player_shield_activated') {
+            applyShieldActivated(data.player_id, data.duration);
+        }
 
-            // mark freeze window
-            freezeActiveUntil = Date.now() + data.duration * 1000;
-        
-            
-            // add frozen class to current infected cells
-            Object.entries(playerPositions).forEach(([pid,pos]) => {
-                const p = playerData[pid];
-                if (p && p.infected) {
-                    const cell = document.getElementById(`cell-${pos.x}-${pos.y}`);
-                    if (cell) cell.classList.add('frozen');
-                }
-            });
-            
-            // schedule removal of frozen class
-            setTimeout(() => {
-                Object.entries(playerPositions).forEach(([pid,pos]) => {
-                    const cell = document.getElementById(`cell-${pos.x}-${pos.y}`);
-                    if (cell) cell.classList.remove('frozen');
-                });
-            }, data.duration * 1000);
+        // Freeze activated
+        else if (data.type === 'freeze_activated') {
+            applyFreezeActivated(data.duration);
         }
 
         else if (data.type === 'error'){
@@ -480,14 +462,58 @@ window.onload = function() {
             return;
         }
 
-        // ── Player position / state update ──
-        const player = data.player_data;
-        if(player) {
-            updatePlayersOnGrid(player);
+        // Player position / state update
+        if (data.player_data) {
+            updatePlayersOnGrid(data.player_data);
         }
     };
 
-    // ── Send chat ──
+    // Shield helper 
+    function applyShieldActivated(player_id, duration) {
+        const player = playerData[player_id];
+        if (!player) return;
+        player.shield_active = true;
+        player.shield_remaining = duration;
+        const pos = playerPositions[player_id];
+        if (!pos) return;
+        const cell = document.getElementById(`cell-${pos.x}-${pos.y}`);
+        if (!player.infected && cell) {
+            cell.classList.add('shielded');
+            setTimeout(() => {
+                player.shield_active = false;
+                const c = document.getElementById(`cell-${playerPositions[player_id]?.x}-${playerPositions[player_id]?.y}`);
+                if (c) c.classList.remove('shielded');
+            }, duration * 1000);
+        }
+    }
+
+    // Freeze helper 
+    function applyFreezeActivated(duration) {
+        const notification = document.createElement("div");
+        notification.className = "notification freeze-activated";
+        notification.innerText = `Freeze mode activated! All infected players cannot move.`;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 2 * 1000);
+
+        freezeActiveUntil = Date.now() + duration * 1000;
+
+        Object.entries(playerPositions).forEach(([pid, pos]) => {
+            const p = playerData[pid];
+            if (p && p.infected) {
+                const cell = document.getElementById(`cell-${pos.x}-${pos.y}`);
+                if (cell) cell.classList.add('frozen');
+            }
+        });
+
+        setTimeout(() => {
+            Object.entries(playerPositions).forEach(([pid, pos]) => {
+                const cell = document.getElementById(`cell-${pos.x}-${pos.y}`);
+                if (cell) cell.classList.remove('frozen');
+            });
+        }, duration * 1000);
+    }
+
+    // Send chat 
     window.send_mess = function() {
         const input = document.getElementById("input-field");
         const text  = input.value.trim();
