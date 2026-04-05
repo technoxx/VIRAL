@@ -37,7 +37,7 @@ VIRAL is an exciting real-time multiplayer game where players navigate a 15×15 
 
 Try VIRAL right now in your browser!  
 
-[▶️ Click to Play](https://viralgame.up.railway.app/)  
+[▶️ Click to Play](https://viral-simulation.vercel.app/)  
 
 Note: This is a multiplayer game. To test it yourself, open the game in 2–4 browser tabs or different devices, and then join. But better to invite your friends and play together :D
 
@@ -119,7 +119,7 @@ Navigate the 15×15 grid, avoid getting infected, collect power-ups, and score t
 
 ### Deployment
 - **Vercel**: Frontend
-- **Railway**: FastAPI backend
+- **Render**: FastAPI backend
 - **Gunicorn/Uvicorn**: ASGI server
 - **WebSocket API**: Real-time communication
 

@@ -251,7 +251,7 @@ window.startGame = function() {
 
 window.onload = function() {
     buildGrid();
-    ws = new WebSocket("wss://viralgame.up.railway.app/ws");
+    ws = new WebSocket("wss://viral-ktsw.onrender.com/ws");
 
     ws.onopen = function() {
         console.log("WebSocket connection established.");
