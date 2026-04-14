@@ -911,6 +911,60 @@ NOTIFICATIONS
     box-shadow: 0 0 20px rgba(247, 79, 106, 0.7);
 }
 
+/* ────────────────────────────────
+SERVER LOADING OVERLAY
+──────────────────────────────── */
+
+.server-loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 15, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(2px);
+}
+
+.server-loading-overlay.hidden {
+    display: none;
+}
+
+.server-loading-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    text-align: center;
+}
+
+.server-loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid var(--muted);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.server-loading-content h2 {
+    font-family: var(--display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+
+.server-loading-subtitle {
+    font-size: 0.9rem;
+    color: var(--subtle);
+    margin: 0;
+}
+
 /* Red wall — shown to all players */
 .notification.red-wall-infected {
     background: #8b0000;

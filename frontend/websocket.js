@@ -7,6 +7,10 @@ const playerData = {};   // stores { health, score, infected, name, shield_activ
 const collectibles = {}; // stores collectible positions: {(x,y): 'shield'|'freeze'}
 let freezeActiveUntil = 0; // timestamp until which infected are frozen
 
+// Server wake-up logic
+const BACKEND_BASE_URL = "https://viral-ktsw.onrender.com";
+const HEALTH_CHECK_TIMEOUT = 30000; // 30 seconds
+
 // ── Screen visibility system  ──
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -245,12 +249,81 @@ window.joinRoom = function() {
     showError("");
 }
 
+// ── Server wake-up functions ──
+function showServerLoadingOverlay() {
+    const overlay = document.getElementById("server-loading-overlay");
+    if (overlay) {
+        overlay.classList.remove("hidden");
+    }
+}
+
+function hideServerLoadingOverlay() {
+    const overlay = document.getElementById("server-loading-overlay");
+    if (overlay) {
+        overlay.classList.add("hidden");
+    }
+}
+
+function updateServerLoadingMessage(text, subtitle = "") {
+    const msgEl = document.getElementById("server-loading-text");
+    const subtitleEl = document.getElementById("server-loading-subtitle");
+    if (msgEl) msgEl.textContent = text;
+    if (subtitleEl) subtitleEl.textContent = subtitle;
+}
+
+async function wakeUpServer() {
+    showServerLoadingOverlay();
+    let attempts = 0;
+    const maxAttempts = 5;
+    
+    while (attempts < maxAttempts) {
+        try {
+            updateServerLoadingMessage("Starting up server...", `Attempt ${attempts + 1} of ${maxAttempts}`);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
+            
+            const response = await fetch(`${BACKEND_BASE_URL}/health`, {
+                method: "GET",
+                signal: controller.signal,
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+                updateServerLoadingMessage("Server ready! 🚀", "Loading game...");
+                // Wait a tiny bit then hide overlay
+                setTimeout(hideServerLoadingOverlay, 800);
+                return true;
+            }
+        } catch (error) {
+            console.warn(`Health check attempt ${attempts + 1} failed:`, error);
+            attempts++;
+            
+            if (attempts < maxAttempts) {
+                // Wait before retrying
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+    }
+    
+    // If all attempts fail, just hide overlay and let user continue
+    console.warn("Server wake-up attempts exhausted, continuing anyway");
+    updateServerLoadingMessage("Connecting to server...", "This may take a moment");
+    setTimeout(hideServerLoadingOverlay, 2000);
+    return false;
+}
+
 window.startGame = function() {
     ws.send(JSON.stringify({ type: "start_game" }));
 }
 
 window.onload = function() {
     buildGrid();
+    
+    // Start waking up the server in the background
+    wakeUpServer();
+    
     ws = new WebSocket("wss://viral-ktsw.onrender.com/ws");
 
     ws.onopen = function() {
